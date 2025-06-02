@@ -1,0 +1,46 @@
+#include "message_slot.h"
+#include <fcntl.h> 
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+int main(int argc, char *argv[]) {
+    if (argc != 5) {
+        fprintf(stderr, "Usage: %s <msg_slot_path> <channel_id> <encryption_flag> <message>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    int fd = open(argv[1], O_RDWR);
+    if (fd < 0) {
+        perror("Failed to open message slot");
+        return EXIT_FAILURE;
+    }
+
+    unsigned int channel_id = atoi(argv[2]);
+    if (ioctl(fd, MSG_SLOT_CHANNEL, channel_id) < 0) {
+        perror("Failed to set channel ID");
+        close(fd);
+        return EXIT_FAILURE;
+    }
+
+    unsigned int enc_flag = atoi(argv[3]);
+    if (ioctl(fd, MSG_SLOT_SET_ENC, enc_flag) < 0) {
+        perror("Failed to set encryption flag");
+        close(fd);
+        return EXIT_FAILURE;
+    }
+
+    const char *message = argv[4];
+    size_t length = strlen(message);
+    if (write(fd, message, length) < 0) {
+        perror("Failed to write message");
+        close(fd);
+        return EXIT_FAILURE;
+    }
+
+    close(fd);
+    return EXIT_SUCCESS;
+}
