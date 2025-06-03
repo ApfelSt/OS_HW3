@@ -45,8 +45,6 @@ static int device_release( struct inode* inode,
                            struct file*  file)
 {
     printk("Invoking device_release(%p, %p)\n", inode, file);
-    if(file->private_data)
-    	kfree(file->private_data); 
     return SUCCESS;
 }
 
