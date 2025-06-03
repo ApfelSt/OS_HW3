@@ -211,15 +211,6 @@ static int __init simple_init(void)
     // Initialize the minors array
     for (i = 0; i < 256; i++) {
         minors[i] = kmalloc(sizeof(slots), GFP_KERNEL);
-        /*if(!minors[i]) {
-            if (!minors[i]) {
-                printk(KERN_ERR "Failed to allocate memory for minor %d\n", i);
-                return -ENOMEM; // Return memory allocation error
-            }
-            minors[i]->head = NULL; // Initialize the head of the slots list
-        }*/
-        /*else
-            minors[i]->head = NULL; // Ensure the head is initialized*/
 	minors[i]->head = NULL;
     }
     printk("Registered character device with major number %d\n", MAJOR_NUM);
