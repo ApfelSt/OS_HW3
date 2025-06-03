@@ -27,11 +27,10 @@ static slots *minors[256]; // array of slots for each minor device
 static int device_open( struct inode* inode,
                         struct file*  file )
 {
-    printk("Invoking device_open(%p, %p)\n", inode, file);
     int minor;
+    printk("Invoking device_open(%p, %p)\n", inode, file);
     minor = iminor(inode); 
     if (!minors[minor]) {
-	//printk("minorminor");
         minors[minor] = kmalloc(sizeof(slots), GFP_KERNEL);
         if (!minors[minor]) {
             return -ENOMEM; 
@@ -46,7 +45,8 @@ static int device_release( struct inode* inode,
                            struct file*  file)
 {
     printk("Invoking device_release(%p, %p)\n", inode, file);
-    //kfree(file->private_data); 
+    if(file->private_data)
+    	kfree(file->private_data); 
     return SUCCESS;
 }
 
@@ -58,24 +58,19 @@ static ssize_t device_read( struct file* file,
                             size_t       length,
                             loff_t*      offset )
 {
-    printk("Invoking device_read(%p, %p, %zu, %lld)\n", file, buffer, length, *offset);
+    int i;
     message_slot *slot= (message_slot *)file->private_data; 
+    printk("Invoking device_read(%p, %p, %zu, %lld)\n", file, buffer, length, *offset);
     if (!slot) {
-	printk("aaa");
         return -EINVAL;
     }
-    printk("ffffffff    %c",slot->message[0]);
     if (!slot->message || slot->length <= 0) {
-	printk("bbb");
         return -EWOULDBLOCK; 
     }
     if (length < slot->length || buffer == NULL) {
-	printk("cccc");
         return -ENOSPC;
     }
-    int i;
     for (i = 0; i < slot->length; i++) {
-	printk("read %c",slot->message[i]);
         if (put_user(slot->message[i], buffer + i) != 0) {
             return -EFAULT;
         }
@@ -91,45 +86,34 @@ static ssize_t device_write( struct file*       file,
                              size_t             length,
                              loff_t*            offset)
 {
-    printk("Invoking device_write(%p, %p, %zu, %lld)\n", file, buffer, length, *offset);
+    int e;
+    int i;
+    char nbuff[BUF_LEN];
     message_slot *slot = (message_slot *)file->private_data; 
+    printk("Invoking device_write(%p, %p, %zu, %lld)\n", file, buffer, length, *offset);
     if (!slot) {
-	printk("aaa");
         return -EINVAL;
     }
     if (length <= 0 || length > BUF_LEN) {
-	printk("bbb");
         return -EMSGSIZE;
     }
-    printk("writing, enc=%d",slot->enc);
-    int e;
     e=slot->enc;
     memset(slot->message, 0, BUF_LEN); 
-    int i;
-    char nbuff[BUF_LEN];
     for (i = 0; i < length; i++) {
-        char c;
         if((e>0) && (i%3 == 2)){
-	    //printk("c=%c",c);
-            c = '#';
-	    //printk("and now c=%c",c);
+            nbuff[i] = '#';
 	}
         else{
-            c = buffer[i];}
-	printk("c=%c",c);
-        if (get_user(nbuff[i], &c) != 0) {
+        if (get_user(nbuff[i], buffer+i) != 0) {
             return -EFAULT;
         }
-	printk("in the buff: %c",nbuff[i]);
+	}
     }
     slot->length = length; 
     for(i=0;i<length;i++){
 	    slot->message[i]=nbuff[i];
-	    //printk("in the buffer: %c",buffer[i]);
     }
-    printk("%c",slot->message[0]);
     file->private_data=slot;
-    printk("%c",((message_slot *)(file->private_data))->message[1]);
     return length;
 }
 
@@ -138,6 +122,8 @@ static long device_ioctl( struct   file* file,
                           unsigned int   ioctl_command_id,
                           unsigned long  ioctl_param )
 {
+    int minor;
+    message_slot *slot;
     printk("Invoking device_ioctl(%p, %u, %lu)\n", file, ioctl_command_id, ioctl_param);
         
     switch (ioctl_command_id) {
@@ -145,9 +131,7 @@ static long device_ioctl( struct   file* file,
             if (ioctl_param <= 0) {
                 return -EINVAL;
             }
-            int minor;
 	    minor = iminor(file->f_inode); 
-	    printk("minor %d", minor);
 	    if(minor<0 || minor> 256){
 		    return -EINVAL;
 	    }
@@ -159,7 +143,6 @@ static long device_ioctl( struct   file* file,
 		minors[minor]->head = NULL;
             }
             if (!minors[minor]->head) {
-		printk("blabla");
                 minors[minor]->head = kmalloc(sizeof(message_slot), GFP_KERNEL);
                 if (!minors[minor]->head) {
                     return -ENOMEM;
@@ -190,17 +173,13 @@ static long device_ioctl( struct   file* file,
                 file->private_data = curr; 
             } 
 	    return SUCCESS;
-        case MSG_SLOT_SET_ENC:
-	    if(0){
-		int i;
-		i++;}
-            message_slot *slot = file->private_data; 
+        case MSG_SLOT_SET_ENC: ;
+            slot = file->private_data; 
                 if (!slot) {
                     return -EINVAL;
                 }
             slot->enc = ioctl_param; 
 	    file->private_data=slot;
-	    printk("qqqqq, %d",((message_slot *)(file->private_data))->enc);
             return SUCCESS;
         default:
             return -EINVAL;
@@ -225,13 +204,13 @@ struct file_operations Fops = {
 static int __init simple_init(void)
 {
     int rc;
+    int i;
     rc  = register_chrdev(MAJOR_NUM, DEVICE_RANGE_NAME, &Fops);
     if (rc < 0) {
         printk(KERN_ERR "Failed to register character device with major number %d\n", MAJOR_NUM);
         return rc; // Return the error code
     }
     // Initialize the minors array
-    int i;
     for (i = 0; i < 256; i++) {
         minors[i] = kmalloc(sizeof(slots), GFP_KERNEL);
         /*if(!minors[i]) {
@@ -252,10 +231,10 @@ static int __init simple_init(void)
 //---------------------------------------------------------------
 static void __exit simple_cleanup(void)
 {
+    int i;
     printk("Unregistering character device with major number %d\n", MAJOR_NUM);
     
     // Free the minors array
-    int i;
     for (i = 0; i < 256; i++) {
         if (minors[i]) {
             message_slot *curr = minors[i]->head;
