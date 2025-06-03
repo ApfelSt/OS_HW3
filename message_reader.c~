@@ -34,12 +34,12 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-   if(write(STDOUT_FILENO, buffer, bytes_read) < 0) {
+   /* if(write(STDOUT_FILENO, buffer, bytes_read) < 0) {
         perror("Failed to write message to stdout");
         close(fd);
         return -1;
-    }
-    //printf("%s",buffer);
+    }*/
+    printf("%s",buffer);
     close(fd);
     return 0;
 }

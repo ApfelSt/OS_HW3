@@ -1,0 +1,1 @@
+cmd_/home/student/Documents/ssh/OS_HW3/Module.symvers := sed 's/ko$$/o/' /home/student/Documents/ssh/OS_HW3/modules.order | scripts/mod/modpost -m    -o /home/student/Documents/ssh/OS_HW3/Module.symvers -e -i Module.symvers   -T -

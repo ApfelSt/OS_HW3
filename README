@@ -1,0 +1,16 @@
+sudo rmmod message_slot
+sudo rm /dev/msgslot3
+  make
+  sudo insmod message_slot.ko
+  sudo mknod /dev/msgslot3 c 235 1
+  sudo chmod o+rw /dev/msgslot3
+echo "ffff"
+./message_sender /dev/msgslot3 5 1 "Hello this is channel 4"
+echo "gggg"
+./message_reader /dev/msgslot3 5
+
+./message_sender /dev/msgslot3 5 0 "Hello this is channel 4"
+./message_sender /dev/msgslot3 5 0 "Hello this is channel 5"
+./message_reader /dev/msgslot3 5
+./message_sender /dev/msgslot3 4 0 "Hello this is channel 4fr"
+./message_reader /dev/msgslot3 4

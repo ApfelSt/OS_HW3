@@ -111,15 +111,16 @@ static ssize_t device_write( struct file*       file,
         char c;
         if((e>0) && (i%3 == 2)){
 	    //printk("c=%c",c);
-            nbuff[i] = '#';
+            c = '#';
 	    //printk("and now c=%c",c);
 	}
         else{
-        if (get_user(nbuff[i], buffer+i) != 0) {
+            c = buffer[i];}
+	printk("c=%c",c);
+        if (get_user(nbuff[i], &c) != 0) {
             return -EFAULT;
         }
 	printk("in the buff: %c",nbuff[i]);
-	}
     }
     slot->length = length; 
     for(i=0;i<length;i++){
